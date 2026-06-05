@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>twomonts</title>
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;600&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<audio id="bgMusic" preload="auto">
+  <source src="Wicked.mp3" type="audio/mpeg">
+</audio>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ───── VARIABLES DE COLOR (TEMA CLARO POR DEFECTO) ───── */
+:root {
+
+  --bg-color:
+  radial-gradient(
+    ellipse at bottom,
+    #ffe8f0 0%,
+    #ffd0df 55%,
+    #ffb8cd 100%
+  );
+
+  --text-color: #b03060;
+  --particle-color: rgba(255, 255, 255, 0.85);
+  --letter-bg: #fbb5cf;
+
+  --letter-text: #5a2035;
+
+  --carousel-bg: #fc99ba;
+
+  --card-bg: #fbb5cf;
+
+  --shadow-color: rgba(180,40,70,0.18);
+
+  --overlay-bg: rgba(180,60,80,0.25);
+
+}
+
+  /* ───── VARIACIONES PARA EL TEMA OSCURO (MENOS RUIDO VISUAL) ───── */
+  body.dark-theme {
+    --bg-color: #121214;          /* Gris oscuro profundo muy relajante */
+    --text-color: #ff8da1;        /* Frases en un rosa pastel brillante pero suave */
+    --letter-bg: #1e1e22;         /* Interior de la carta oscuro */
+    --letter-text: #f5e6eb;       /* Texto de la carta claro */
+    --carousel-bg: #2a1b20;       /* Carrusel oscuro */
+    --card-bg: #252529;           /* Tarjetitas oscuras */
+    --shadow-color: rgba(0, 0, 0, 0.5);
+    --overlay-bg: rgba(0, 0, 0, 0.7);
+    --particle-color: rgba(255, 255, 255, 0.9);
+  }
+
+  body {
+    font-family: 'Dancing Script', cursive;
+    background: var(--bg-color);
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+    transition: background 0.5s ease; /* Transición suave al cambiar de color */
+  }
+
+#particles{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  overflow:hidden;
+  z-index:1;
+}
+
+.particle{
+  position:absolute;
+  border-radius:50%;
+
+  background: var(--particle-color);
+
+  filter:blur(0.8px);
+
+  box-shadow:
+    0 0 8px rgba(255,255,255,0.8),
+    0 0 16px rgba(255,190,210,0.5);
+
+  opacity:0;
+
+  animation:
+    particleFloat var(--dur) linear infinite,
+    particleFade var(--fade) ease-in-out infinite;
+}
+
+@keyframes particleFloat{
+  from{
+    transform:translateY(0);
+  }
+  to{
+    transform:translateY(-120px);
+  }
+}
+
+@keyframes particleFade{
+  0%,100%{
+    opacity:0;
+  }
+
+  50%{
+    opacity:1;
+  }
+}
+
+  /* ───── BOTÓN DE CAMBIO DE TEMA ───── */
+  #theme-btn {
+    position: fixed;
+    right: 24px; top: 24px;
+    background: var(--card-bg);
+    border: 2px solid var(--pink);
+    border-radius: 50%;
+    width: 45px; height: 45px;
+    font-size: 1.3rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px var(--shadow-color);
+    transition: transform 0.2s, background 0.3s, border-color 0.3s;
+    z-index: 30;
+    user-select: none;
+  }
+  #theme-btn:hover {
+    transform: scale(1.1);
+  }
+
+  /* ───── FASE 1: PANTALLA DE INICIO ───── */
+  #intro {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 10px;
+    background: var(--bg--color);
+    z-index: 100;
+    transition: opacity 0.8s ease;
+  }
+  #intro.hide { opacity: 0; pointer-events: none; }
+
+  .intro-heart {
+    font-size: 2rem;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
+
+  .intro-text {
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.7rem;
+    color: #c0395a;
+    cursor: pointer;
+    transition: color 0.2s;
+    user-select: none;
+  }
+  .intro-text:hover { color: var(--red); }
+
+  /* ───── FASE 2: ÁRBOL Y FRASES ───── */
+  #scene {
+    position: fixed; inset: 0;
+    opacity: 0;
+    transition: opacity 1s ease;
+    pointer-events: none;
+  }
+  #scene.visible { opacity: 1; pointer-events: all; }
+
+  /* Contenedor del Árbol HTML5 Canvas */
+  #treeCanvas {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  /* Corazones flotantes */
+  .heart-float {
+    position: absolute;
+    font-size: 1rem;
+    pointer-events: none;
+    opacity: 0;
+    animation: floatUp var(--dur) ease-out var(--delay) forwards;
+    transform-origin: center;
+    z-index: 10;
+  }
+  @keyframes floatUp {
+    0%   { opacity: 0; transform: translateY(0) rotate(0deg) scale(0.6); }
+    15%  { opacity: 1; }
+    60%  { opacity: 0.85; transform: translateY(calc(var(--rise) * -0.6)) rotate(var(--spin)) scale(1.1); }
+    100% { opacity: 0; transform: translateY(var(--rise)) rotate(calc(var(--spin) * 2)) scale(0.8); }
+  }
+
+  /* Copa del árbol en forma de Corazón Gigante */
+  .canopy-heart {
+    position: absolute;
+    pointer-events: none;
+    font-size: 0.85rem;
+    opacity: 0;
+    animation: blossomRise 1.8s ease-out forwards;
+    animation-delay: var(--sd);
+    z-index: 5;
+  }
+  @keyframes blossomRise {
+
+  0%{
+    opacity:0;
+    transform:
+      translateY(180px)
+      scale(0.2)
+      rotate(var(--rot));
+  }
+
+  30%{
+    opacity:1;
+  }
+
+  100%{
+    opacity:1;
+    transform:
+      translateY(0)
+      scale(1)
+      rotate(var(--rot));
+  }
+
+}
+
+  /* Frases románticas */
+  .phrase {
+    position: absolute;
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.15rem;
+    color: var(--text-color);
+    opacity: 0;
+    white-space: nowrap;
+    animation: fadePhrase 4s ease forwards;
+    animation-delay: var(--pd);
+    pointer-events: none;
+    z-index: 8;
+  }
+  @keyframes fadePhrase {
+    0%   { opacity: 0; transform: translateY(8px); }
+    20%  { opacity: 1; transform: translateY(0); }
+    75%  { opacity: 1; }
+    100% { opacity: 0.6; }
+  }
+
+  /* ───── FASE 3: BOTÓN CARTA ───── */
+  #carta-btn {
+    position: fixed;
+    left: 24px; top: 50%;
+    transform: translateY(-50%);
+    background: var(--red);
+    border: none; border-radius: 14px;
+    padding: 14px 18px;
+    cursor: pointer;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 5px;
+    box-shadow: 0 4px 18px rgba(232,48,90,0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+    z-index: 20;
+    animation: none;
+  }
+  #carta-btn.show {
+    opacity: 1; pointer-events: all;
+    animation: bounceIn 0.6s cubic-bezier(.36,.07,.19,.97) forwards;
+  }
+  #carta-btn:hover {
+    transform: translateY(-50%) scale(1.08);
+    box-shadow: 0 6px 24px rgba(232,48,90,0.55);
+  }
+  @keyframes bounceIn {
+    0%   { opacity:0; transform: translateY(-50%) scale(0.5); }
+    70%  { transform: translateY(-50%) scale(1.1); }
+    100% { opacity:1; transform: translateY(-50%) scale(1); }
+  }
+
+  .envelope-icon { font-size: 1.6rem; }
+  .carta-label {
+    font-family: 'Dancing Script', cursive;
+    color: #fff; font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  /* ───── FASE 4: MODAL CARTA ───── */
+  #modal-overlay {
+    position: fixed; inset: 0;
+    background: var(--overlay-bg);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 50;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  #modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  #modal {
+  background: var(--letter-bg);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 20px;
+  width: min(98vw, 800px);
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 16px 60px rgba(180,40,70,0.35);
+  transform: scale(0.85) translateY(30px);
+  transition: transform 0.4s cubic-bezier(.175,.885,.32,1.275);
+  display: flex;
+  flex-direction: column;
+}
+  #modal-overlay.open #modal {
+    transform: scale(1) translateY(0);
+  }
+
+  /* Header rosa */
+  .modal-header {
+    background: linear-gradient(135deg, #f48fb1, #f06292);
+    padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal-title {
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.3rem; color: #fff;
+    font-weight: 600;
+  }
+  .close-btn {
+    background: rgba(255,255,255,0.3);
+    border: none; border-radius: 50%;
+    width: 28px; height: 28px;
+    color: #fff; font-size: 1rem;
+    cursor: pointer; display: flex;
+    align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .close-btn:hover { background: rgba(255,255,255,0.55); }
+
+  /* Carrusel de ositos */
+  .carousel-wrap {
+    background: var(--carousel-bg);
+    padding: 14px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .carousel-track {
+    display: flex;
+    gap: 12px;
+    padding: 0 16px;
+    animation: scrollBears 12s linear infinite;
+    width: max-content;
+  }
+  @keyframes scrollBears {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .bear-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 12px 14px;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+    box-shadow: 0 2px 10px rgba(240,98,146,0.18);
+    min-width: 80px;
+    flex-shrink: 0;
+  }
+  .bear-emoji { font-size: 2.4rem; line-height: 1; }
+  .bear-label { font-family: 'Dancing Script', cursive; font-size: 0.72rem; color: #e91e63; }
+
+  /* Texto de la carta */
+  .modal-body {
+    padding: 18px 20px 22px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .letter-text {
+    font-family: 'Lora', serif;
+    font-size: 0.92rem;
+    line-height: 1.75;
+    color: var(--letter-text);
+    border-left: 3px solid #f48fb1;
+    padding-left: 14px;
+    min-height: 60px;
+  }
+  .cursor-blink {
+    display: inline-block;
+    width: 2px; height: 1em;
+    background: #e91e63;
+    vertical-align: text-bottom;
+    animation: blink 0.7s step-end infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body>
+<button id="theme-btn" title="Cambiar tema">🌙</button>
+<div id="intro">
+  <div class="intro-heart">🌸</div>
+  <div class="intro-text" id="start-btn">Dale Click, Cariño</div>
+</div>
+
+<div id="floaters"></div>
+
+<div id="scene">
+  <canvas id="treeCanvas"></canvas>
+
+  <div id="canopy"></div>
+
+  <div id="floaters"></div>
+
+  <div id="phrases"></div>
+</div>
+
+<div id="particles"></div>
+
+<button id="carta-btn">
+  <span class="envelope-icon">✉️</span>
+  <span class="carta-label">Carta</span>
+</button>
+
+<div id="modal-overlay">
+  <div id="modal">
+    <div class="modal-header">
+      <span class="modal-title">💌 Una carta para ti</span>
+      <button class="close-btn" id="close-modal">✕</button>
+    </div>
+
+    <div class="carousel-wrap">
+      <div class="carousel-track" id="carousel-track"></div>
+    </div>
+
+    <div class="modal-body">
+      <div class="letter-text" id="letter-text"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────
+const PHRASES = [
+  "Encontré mi rincón favorito del mundo en tus abrazos.",
+  "Eres esa casualidad que siempre quise que me pasara.",
+  "Cada cosa tuya hace que todo sea más bonito.",
+  "Contigo los días tienen un brillo diferente.",
+  "Me encanta la paz que me das cuando estamos juntos.",
+  "Contigo no quiero entenderlo todo... Quiero vivirlo.",
+  "Si debo quedarme con algo, quiero que seas tú.",
+  "Tu presencia es, sin duda, mi lugar favorito.",
+  "Contigo hasta los silencios son bonitos.",
+  "A tu lado, el tiempo vuela y los momentos se quedan para siempre.",
+  "Eres ese ser que no quiero perder.",
+  "El tiempo pasa pero mi cariño por ti, solo crece.",
+  "Contigo lo sencillo se vuelve maravilloso.",
+  "Tus ojos reflejan todo lo que me hace bien.",
+  "Eres la paz que siempre busqué y que por fin hallé en ti.",
+  "Eres a muchas de mis preguntas.",
+  "Lo simple es lo más profundo: estar aquí, ahora.",
+  "Contigo el mundo es más lindo.",
+  "Estás en cada detalle del universo.",
+  "Gracias por ser mi certeza en un mundo tan incierto.",
+  "Eres mi camino, y siemper lo serás.",
+  "Te quiero libre, pero conmigo."
+];
+
+const HEART_COLORS = ['💗','🌸','💕'];
+
+const BEARS = [
+  { emoji: '💗', label: '' },
+  { emoji: '🌸', label: '' },
+  { emoji: '💗', label: '' },
+  { emoji: '🌸', label: '' },
+  { emoji: '💗', label: '' },
+  { emoji: '🌸', label: '' },
+  { emoji: '💗', label: '' },
+  { emoji: '🌸', label: '' },
+];
+
+const LETTER = 'Mon Cœur:\n\nHe estado pensando mucho en nosotros y en la vida.\nHay cosas que uno entiende demasiado tarde.\nA veces tienen que romperse para poder ver la verdad.\n\nDurante mucho tiempo pensé que sabía lo importante que eras para mí. Pensé que era consciente de lo mucho que disfrutaba hablar contigo, de lo mucho que me gustaban nuestras conversaciones y de lo presente que estabas en mis días.\n\nPero después de lo que pasó, entendí que no lo sabía realmente.\n\nPorque hay una diferencia entre apreciar algo y darte cuenta de lo que significaría vivir sin ello.\nY esa diferencia cambió muchas cosas para mí.\n\nHubo un momento en el que me pregunté cómo sería mi vida si nuestros caminos simplemente dejaran de encontrarse. Y aunque el mundo habría seguido igual, nada habría sido exactamente lo mismo.\n\nLas estrellas seguirían apareciendo cada noche.\nLas calles seguirían estando ahí.\nLos días continuarían avanzando.\n\nPero habría faltado alguien a quien señalarle las cosas que me parecen bonitas.\nAlguien a quien contarle lo que pensé durante el día.\nAlguien cuya presencia se volvió tan natural que dejé de notar cuánto significaba para mí.\nY creo que fue entonces cuando entendí algo.\n\nA veces creemos que el miedo está en perder a una persona.\nPero muchas veces el verdadero miedo está en perder todo lo que esa persona construyó dentro de nosotros.\nPorque fuiste la única capaz de mostrarme una parte de mi que creía inexistente. Una versión que llevaba escondida, que no sabía que estaba ahí.\nUna versión más tranquila.\nMás feliz.\nMás abierta.\nUna versión capaz de encontrar belleza en cosas pequeñas porque sabía que después podría compartirlas contigo.\n\nY cuando imaginé tu ausencia, no solo sentí que me faltaría alguien.\nSentí que me faltaría una parte de mi propio ser.\nPorque las personas importantes no ocupan un lugar en nuestra vida.\nSe convierten en parte de ella, parte de uno.\nSe mezclan con nuestros recuerdos, con nuestras costumbres, con nuestra manera de mirar el mundo.\n\nY un día te das cuenta de que ya no puedes separar completamente quién eres de todo lo que viviste junto a ellas.\n\nEso fue lo que entendí.\n\nEntendí que no te habías vuelto importante para mí de golpe.\nHabías llegado poco a poco.\nConversación tras conversación.\nRisa tras risa.\nDía tras día.\nHasta convertirte en una de esas personas cuya existencia hace que el mundo se sienta un poco más cálido.\n\nY entonces pasó algo curioso.\n\nDespués de todo lo difícil, después de todas las dudas y los miedos, no valoro lo que tenemos porque sea perfecto. Lo valoro porque sobrevivió y sobrevivimos algo delicado, algo que para mí es irreparable, algo que pensé que ya no tenía una camino de regreso. Y aun así, aquí estamos.\n\nLo terminé valorando porque me mostró algo que antes no veía.\n\nMe mostró que hay personas que dejan huellas tan profundas que cambian la forma en que entendemos el cariño.\nPersonas que nos enseñan que querer a alguien no siempre significa pensar en grandes promesas o en palabras extraordinarias.\nA veces significa algo mucho más sencillo.\n\nSignifica mirar un momento cualquiera y pensar:\n\n"Ojalá estuviera aquí y viera esto"\n\nY si algo comprendí de todo, es que hay personas que valen la pena. Personas por las que vale la pena aprender, crecer, equivocarse, comprender y seguir adelante.\n\nY si tuviera que resumir todo en una sola frase, diría:\n\nNo agradezco que hayas llegado a mi vida porque la hiciste perfecta.\nLa agradezco porque la hiciste más tuya.\nY porque, desde que llegaste, hay una versión de mí que no quiero perder.\n\nTe quiero Aralala.'
+
+// ─── CONFIGURACIÓN DEL CANVAS DEL ÁRBOL ─────────────────────────────────
+const canvas = document.getElementById('treeCanvas');
+const ctx = canvas.getContext('2d');
+
+// Arreglo para guardar las briznas de pasto
+let cesped = [];
+const totalCesped = 320;// Cantidad de briznas para cubrir el suelo
+
+function generarCesped() {
+  for (let i = 0; i < totalCesped; i++) {
+    cesped.push({
+      x: Math.random() * canvas.width,           // Repartido por todo el suelo
+      altura: 15 + Math.random() * 20,          // Alturas variables para naturalidad
+      flexibilidad: 0.3 + Math.random() * 0.7,   // Qué tanto le afecta el viento
+      fase: Math.random() * Math.PI * 2,         // Para que no se muevan todos exactamente iguales
+      grosor: 1.5 + Math.random() * 2            // Grosor de la base
+    });
+  }
+}
+// Lo generamos de una vez
+generarCesped();
+
+// Variable global para controlar el paso del tiempo en la oscilación del viento
+let tiempoViento = 0;
+
+// Configuración del Canvas para pantalla completa
+canvas.width = window.innerWidth;  
+canvas.height = window.innerHeight; 
+
+function generarCesped() {
+  cesped = [];
+
+  const colores = [
+    '#3fa34d',
+    '#4caf50',
+    '#66bb6a'
+  ];
+
+  for (let i = 0; i < totalCesped; i++) {
+    cesped.push({
+      x: Math.random() * canvas.width,
+      altura: 35 + Math.random() * 45,
+      flexibilidad: 0.3 + Math.random() * 0.7,
+      fase: Math.random() * Math.PI * 2,
+      grosor: 1.5 + Math.random() * 2,
+
+      color:
+        colores[Math.floor(Math.random() * colores.length)]
+    });
+  }
+}
+
+generarCesped();
+
+const tronco = {
+  x: canvas.width / 2,
+  y: canvas.height - 5,
+  grosorInicial: 26,
+  grosorFinal: 11,
+  alturaObjetivo: 145, // Ajustado sutilmente para centrarse bajo el corazón matemático
+  progreso: 0,
+  velocidad: 1.8, 
+  puntos: []    
+};
+
+function generarTrayectoriaTronco() {
+  let infoTronco = [];
+  let pasos = tronco.alturaObjetivo / tronco.velocidad;
+  let xActual = tronco.x;
+  let yActual = tronco.y;
+  
+  // Fuerza al tronco a mantenerse en el centro (xActual = tronco.x)
+  // eliminamos el 'anguloBase' aleatorio para que sea una línea recta perfecta
+  for (let i = 0; i <= pasos; i++) {
+    let t = i / pasos; 
+    
+    // Subimos recto: x se mantiene, y disminuye
+    yActual -= tronco.velocidad;
+
+    let grosorActual = tronco.grosorInicial - (tronco.grosorInicial - tronco.grosorFinal) * t;
+    infoTronco.push({ x: xActual, y: yActual, grosor: grosorActual });
+  }
+  return infoTronco;
+}
+
+tronco.puntos = generarTrayectoriaTronco();
+
+let ramas = [];
+let troncoTerminado = false;
+let iniciarFollaje = false;
+
+function crearRamasEstructurales(xInicio, yInicio) {
+  // Ajustadas para expandirse dentro de la base inferior de la forma de corazón
+  ramas.push({ x: xInicio, y: yInicio, angulo: -Math.PI/2 - 0.8, largoMax: 100, largoActual: 0, grosor: 8, velocidad: 1.2, lado: -1 }); 
+  ramas.push({ x: xInicio, y: yInicio, angulo: -Math.PI/2 + 0.8, largoMax: 100, largoActual: 0, grosor: 8, velocidad: 1.2, lado: 1 });  
+  ramas.push({ x: xInicio, y: yInicio, angulo: -Math.PI/2 - 0.1, largoMax: 110, largoActual: 0, grosor: 7.5, velocidad: 1.2, lado: 0 });  
+}
+
+// ─── BUCLE DE ANIMACIÓN DEL ÁRBOL ──────────────────────────────────────
+function animarArbol() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+const grad = ctx.createLinearGradient(
+  0,
+  canvas.height - 180,
+  0,
+  canvas.height
+);
+
+grad.addColorStop(0,'rgba(0,0,0,0)');
+grad.addColorStop(1,'rgba(40,80,40,0.25)');
+
+ctx.fillStyle = grad;
+ctx.fillRect(
+  0,
+  canvas.height - 180,
+  canvas.width,
+  180
+);
+
+// ─── ANIMACIÓN Y DIBUJO DEL CÉSPED VERDE CON BRILLO ───
+  tiempoViento += 0.02; 
+
+  cesped.forEach(brizna => {
+
+    // 🌸 FLORECITAS EN EL CÉSPED (MUY POQUITAS)
+  if (Math.random() < 0.02) {
+    const flor = document.createElement('div');
+    flor.textContent = Math.random() > 0.5 ? '🌸' : '✨';
+    flor.style.position = 'absolute';
+    flor.style.left = brizna.x + 'px';
+    flor.style.top = (canvas.height - 10) + 'px';
+    flor.style.fontSize = (0.6 + Math.random()) + 'rem';
+    flor.style.opacity = 0.6 + Math.random() * 0.4;
+    flor.style.pointerEvents = 'none';
+    flor.style.animation = 'floatUp 4s ease-out forwards';
+
+    document.getElementById('floaters').appendChild(flor);
+
+    setTimeout(() => flor.remove(), 5000);
+  }
+
+    let oscilacion = Math.sin(tiempoViento + brizna.fase) * 15 * brizna.flexibilidad;
+    
+    // El pasto nace 10px debajo del borde para que no se vea el "corte"
+    let baseY = canvas.height + 10; 
+
+    ctx.beginPath();
+    ctx.moveTo(brizna.x, baseY);
+    
+    let ctrlX = brizna.x + oscilacion * 0.5;
+    let ctrlY = baseY - brizna.altura * 0.6;
+    let finX = brizna.x + oscilacion;
+    let finY = baseY - brizna.altura;
+    
+    ctx.quadraticCurveTo(ctrlX, ctrlY, finX, finY);
+    
+    // Aplicar brillo verde
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#2ecc71';
+    
+    ctx.strokeStyle = brizna.color;
+    ctx.lineWidth = brizna.grosor;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  });
+  
+  // IMPORTANTE: Resetear shadowBlur para que el árbol no brille verde
+  ctx.shadowBlur = 0;
+  if (tronco.progreso < tronco.puntos.length) {
+    for (let i = 0; i < tronco.progreso; i++) {
+      let p = tronco.puntos[i];
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.grosor / 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#7b4f2e'; 
+      ctx.fill();
+    }
+    tronco.progreso++;
+  } else if (!troncoTerminado) {
+    troncoTerminado = true;
+    const puntaTronco = tronco.puntos[tronco.puntos.length - 1];
+    crearRamasEstructurales(puntaTronco.x, puntaTronco.y);
+  }
+
+  if (troncoTerminado) {
+    tronco.puntos.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.grosor / 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#7b4f2e';
+      ctx.fill();
+    });
+
+    let ramasListas = true;
+    ramas.forEach(rama => {
+      if (rama.largoActual < rama.largoMax) {
+        rama.largoActual += rama.velocidad;
+        ramasListas = false;
+      }
+
+      ctx.strokeStyle = '#7b4f2e';
+      ctx.lineCap = 'round';
+      
+      let xPasado = rama.x;
+      let yPasado = rama.y;
+
+      let pasosRama = rama.largoActual;
+      for (let j = 0; j < pasosRama; j += 2) {
+        let t = j / rama.largoMax;
+        let grosorActual = rama.grosor * (1 - t * 0.8);
+        if (grosorActual < 1.5) grosorActual = 1.5;
+
+        let anguloVariacion = Math.sin(j * 0.04) * 0.03;
+        let xSiguiente = xPasado + Math.cos(rama.angulo + anguloVariacion) * 2;
+        let ySiguiente = yPasado + Math.sin(rama.angulo + anguloVariacion) * 2;
+
+        ctx.lineWidth = grosorActual;
+        ctx.beginPath();
+        ctx.moveTo(xPasado, yPasado);
+        ctx.lineTo(xSiguiente, ySiguiente);
+        ctx.stroke();
+
+        xPasado = xSiguiente;
+        yPasado = ySiguiente;
+
+        if (j > rama.largoMax * 0.4 && !rama.ramificado && ramas.length < 9) {
+          let extraAngulo = rama.lado !== 0 ? rama.lado * 0.5 : (Math.random() > 0.5 ? 0.4 : -0.4);
+          ramas.push({
+            x: xPasado,
+            y: yPasado,
+            angulo: rama.angulo + extraAngulo,
+            largoMax: rama.largoMax * 0.6,
+            largoActual: 0,
+            grosor: grosorActual * 0.75,
+            velocidad: rama.velocidad * 0.9,
+            lado: rama.lado
+          });
+          rama.ramificado = true; 
+        }
+      }
+    });
+
+    if (ramasListas && !iniciarFollaje) {
+      iniciarFollaje = true;
+      buildCanopy();
+    }
+  }
+
+  requestAnimationFrame(animarArbol);
+}
+
+// ─── FASE 1 → FASE 2 ────────────────────────────────────────────────────
+document.getElementById('start-btn').addEventListener('click', startExperience);
+
+function startExperience() {
+
+  const music = document.getElementById('bgMusic');
+
+  music.volume = 0.35;
+  music.play();
+
+  const intro = document.getElementById('intro');
+  intro.classList.add('hide');
+  setTimeout(() => { intro.style.display = 'none'; }, 800);
+
+  const scene = document.getElementById('scene');
+  scene.classList.add('visible');
+
+  animarArbol();
+  spawnFloaters();
+
+  PHRASES.forEach((phrase, i) => spawnPhrase(phrase, i));
+
+  setTimeout(() => {
+    document.getElementById('carta-btn').classList.add('show');
+  }, 7500);
+}
+
+// ─── CORAZONES FLOTANTES ─────────────────────────────────────────────────
+function spawnFloaters() {
+  const container = document.getElementById('floaters');
+  const originX = window.innerWidth / 2;
+  const originY = window.innerHeight - 120;
+
+  let count = 0;
+  const maxBatch = 85;
+
+  function spawnOne() {
+    if (count > maxBatch) return;
+    const el = document.createElement('div');
+    el.className = 'heart-float';
+    el.textContent = HEART_COLORS[Math.floor(Math.random() * HEART_COLORS.length)];
+
+    const spreadX = (Math.random() - 0.5) * 160; 
+    const rise = -(150 + Math.random() * 240);
+    const spin = (Math.random() - 0.5) * 60;
+    const dur = 2.2 + Math.random() * 1.8;
+
+    el.style.cssText = `
+      left: ${originX + spreadX}px;
+      top: ${originY}px;
+      font-size: ${0.8 + Math.random() * 0.8}rem;
+      --dur: ${dur}s;
+      --delay: 0s;
+      --rise: ${rise}px;
+      --spin: ${spin}deg;
+    `;
+    container.appendChild(el);
+    count++;
+    setTimeout(() => el.remove(), (dur + 0.5) * 1000);
+
+    setTimeout(spawnOne, 90 + Math.random() * 100);
+  }
+
+  spawnOne();
+}
+
+// ─── COPA EN FORMA DE CORAZÓN MATEMÁTICO (Ecuación Cardioide) ─────────────
+function buildCanopy() {
+  const canopy = document.getElementById('canopy');
+  const cx = window.innerWidth / 2;
+  // Centro focal donde se desarrollará el corazón de pétalos
+  const centerY = canvas.height - 250;
+
+  const totalPetalos = 90 //cantidad de petalos ideales para tupir el diseño
+  const posiciones = [];
+
+  for (let i = 0; i < totalPetalos; i++) {
+    // Ángulo de 0 a 2*PI para dar la vuelta completa a la silueta
+    let t = (i / totalPetalos) * Math.PI * 2;
+
+    // Ecuación paramétrica clásica del corazón geométrico
+    let xMeta = 16 * Math.pow(Math.sin(t), 3);
+    let yMeta = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+
+    // Multiplicador de tamaño (escala) del corazón de hojas
+    const escala = 9.5; 
+    
+    // Añadimos un pequeño factor de dispersión/ruido para que luzca natural y no rígido
+    let ruidoX = (Math.random() - 0.5) * 28;
+    let ruidoY = (Math.random() - 0.5) * 28;
+
+    let xFinal = cx + (xMeta * escala) + ruidoX;
+    let yFinal = centerY + (yMeta * escala) + ruidoY;
+
+    posiciones.push({ x: xFinal, y: yFinal });
+  }
+
+  // Rellenar un poco el interior del corazón para que se fusione bien con las ramas
+//for (let k = 0; k < 30; k++) {
+//  let t = Math.random() * Math.PI * 2;
+//  let r = Math.random(); // Factor de radio interno
+//  let xMeta = 16 * Math.pow(Math.sin(t), 3);
+//  let yMeta = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+//  
+//  let xFinal = cx + (xMeta * 7.5 * r) + (Math.random() - 0.5) * 10;
+//  let yFinal = centerY + (yMeta * 7.5 * r) + (Math.random() - 0.5) * 10;
+//  posiciones.push({ x: xFinal, y: yFinal });
+//}
+
+// 2. Capa masiva de relleno interno para tupir todo el corazón
+  const totalRelleno = 220; // <--- Subimos de 30 a 140 pétalos internos
+  for (let k = 0; k < totalRelleno; k++) {
+    let t = Math.random() * Math.PI * 2;
+    
+    // Usamos Math.sqrt (raíz cuadrada) para que los pétalos se expandan de forma uniforme 
+    // hacia los bordes y no se amontonen todos en el centro exacto.
+    let r = 0.1 + Math.sqrt(Math.random()) * 0.85; 
+    
+    let xMeta = 16 * Math.pow(Math.sin(t), 3);
+    let yMeta = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+    
+    // Usamos la misma escala (8.2) del borde exterior para que no queden huecos con las ramas
+    let xFinal = cx + (xMeta * 8.2 * r) + (Math.random() - 0.5) * 15;
+    let yFinal = centerY + (yMeta * 8.2 * r) + (Math.random() - 0.5) * 15;
+    
+    posiciones.push({ x: xFinal, y: yFinal });
+  }
+
+
+  // Desordenar el orden de aparición para un efecto visual orgánico al brotar
+  posiciones.sort(() => Math.random() - 0.5);
+
+  posiciones.forEach((pos, i) => {
+    const el = document.createElement('div');
+    el.className = 'canopy-heart';
+    
+    // Flor principal
+const emoji =
+  Math.random() > 0.88
+    ? '🌺'
+    : '🌸';
+
+el.textContent = emoji;
+
+// Tamaños variados
+const size =
+  0.55 + Math.random() * 1.25;
+
+// Transparencia aleatoria
+const opacity =
+  0.55 + Math.random() * 0.45;
+
+// Rotación mucho más natural
+const rotacion =
+  (Math.random() - 0.5) * 80;
+
+// Pequeña variación de profundidad
+const zIndex =
+  Math.floor(Math.random() * 4) + 5;
+
+el.style.cssText = `
+  left:${pos.x}px;
+  top:${pos.y}px;
+
+  --sd:${0.1 + i * 0.03}s;
+  --rot:${rotacion}deg;
+
+  font-size:${size}rem;
+  opacity:${opacity};
+
+  z-index:${zIndex};
+`;
+    canopy.appendChild(el);
+  });
+}
+
+// ─── FRASES CON SISTEMA DE ZONAS EXCLUSIVAS (ANTI-CHOQUES) ─────────────────
+// Arreglo global para registrar las coordenadas de las frases que ya se imprimieron
+let frasesRegistradas = [];
+
+// IMPORTANTE: Esta variable DEBE estar afuera de la función, al inicio del script,
+// para que no se reinicie cada vez que brota una frase nueva.
+if (typeof frasesRegistradasGlobal === 'undefined') {
+  var frasesRegistradasGlobal = [];
+}
+
+// ─── FRASES CON CAJA DE COLISIÓN REAL (HITBOX ANTI-SUPERPOSICIÓN) ───
+function spawnPhrase(text, index) {
+  const container = document.getElementById('phrases');
+  
+  // Si es la primera frase de todas, vaciamos el registro para el nuevo inicio
+  if (index === 0) {
+    frasesRegistradasGlobal = [];
+  }
+
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight - 265; // Centro de la copa del árbol
+
+  let xFinal = 0, yFinal = 0;
+  let posEncontrada = false;
+  let intentos = 0;
+
+  // Definimos el tamaño del "rectángulo invisible" que ocupa cada frase
+  // Al ser frases bonitas y largas, necesitan buen espacio horizontal
+  const anchoFrase = 250; 
+  const altoFrase = 75; 
+
+  while (!posEncontrada && intentos < 300) {
+    intentos++;
+
+    // 1. Generar posición en un radio intermedio alrededor del árbol
+    let angulo = Math.random() * Math.PI * 2;
+    let radio = 250 + Math.random() * 160; 
+
+    let xIntento = centerX + Math.cos(angulo) * radio;
+    let yIntento = centerY + Math.sin(angulo) * radio * 0.85;
+
+    // Control estricto de los bordes de la pantalla (evita que se corten)
+    if (xIntento < 130 || xIntento > window.innerWidth - 130 || yIntento < 50 || yIntento > window.innerHeight - 100) {
+      continue; 
+    }
+
+    // 2. Escudo del Árbol (No pisar el tronco ni el centro del corazón)
+    let distXAlArbol = Math.abs(xIntento - centerX);
+    if (distXAlArbol < 250 && yIntento > (centerY - 130) && yIntento < (window.innerHeight - 40)) {
+      continue;
+    }
+
+    // 3. CONTROL DE HITBOXES (Detectar si los rectángulos se encima)
+    let choqueDetectado = false;
+    for (let i = 0; i < frasesRegistradasGlobal.length; i++) {
+      let f = frasesRegistradasGlobal[i];
+
+      // Comprobamos si el rectángulo de la nueva frase se cruza con el de una existente
+      // dX debe ser mayor que el ancho y dY mayor que el alto para que NO raye
+      let cruzadoEnX = Math.abs(xIntento - f.x) < anchoFrase;
+      let cruzadoEnY = Math.abs(yIntento - f.y) < altoFrase;
+
+      if (cruzadoEnX && cruzadoEnY) {
+        choqueDetectado = true;
+        break; // Rompe el ciclo actual e intenta en otra coordenada
+      }
+    }
+
+    // Si pasó limpiamente todas las pruebas, guardamos la posición
+    if (!choqueDetectado) {
+      xFinal = xIntento;
+      yFinal = yIntento;
+      posEncontrada = true;
+    }
+  }
+
+  // Plan de respaldo si la pantalla es muy chica y se acaban los huecos
+  if (!posEncontrada) {
+    xFinal = (index % 2 === 0) ? 140 + Math.random()*40 : window.innerWidth - 140 - Math.random()*40;
+    yFinal = 60 + (index * 40) % (window.innerHeight - 180);
+  }
+
+  // Registramos la frase con su coordenada aprobada
+  frasesRegistradasGlobal.push({ x: xFinal, y: yFinal });
+
+  // 4. Inyectar el HTML con diseño adaptado
+  const el = document.createElement('div');
+  el.className = 'phrase';
+  el.textContent = text;
+  
+  el.style.cssText = `
+    left: ${xFinal}px; 
+    top: ${yFinal}px; 
+    transform: translate(-50%, -50%); /* Centrado matemático perfecto */
+    text-align: center;
+    font-size: 1.05rem;
+    max-width: ${anchoFrase - 20}px;  /* Forzamos a que el texto respete el ancho de su Hitbox */
+    white-space: normal;
+    position: absolute;
+    display: block;
+    --pd: ${1.5 + index * 1.3}s;
+  `;
+  
+  container.appendChild(el);
+}
+// ─── CARRUSEL DE OSITOS ───────────────────────────────────────────────────
+(function buildCarousel() {
+  const track = document.getElementById('carousel-track');
+  [...BEARS, ...BEARS].forEach(b => {
+    const card = document.createElement('div');
+    card.className = 'bear-card';
+    card.innerHTML = `<span class="bear-emoji">${b.emoji}</span><span class="bear-label">${b.label}</span>`;
+    track.appendChild(card);
+  });
+})();
+
+// ─── BOTÓN CARTA → MODAL ─────────────────────────────────────────────────
+document.getElementById('carta-btn').addEventListener('click', openModal);
+document.getElementById('close-modal').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+function openModal() {
+  document.getElementById('modal-overlay').classList.add('open');
+  startTypewriter();
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+// ─── EFECTO MÁQUINA DE ESCRIBIR ───────────────────────────────────────────
+let typeInterval = null;
+function startTypewriter() {
+  const el = document.getElementById('letter-text');
+  el.innerHTML = '';
+  let i = 0;
+  const text = LETTER;
+  if (typeInterval) clearInterval(typeInterval);
+
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor-blink';
+  el.appendChild(cursor);
+
+  typeInterval = setInterval(() => {
+    if (i >= text.length) { clearInterval(typeInterval); return; }
+    const char = text[i];
+    if (char === '\n') {
+      cursor.before(document.createElement('br'));
+    } else {
+      cursor.before(document.createTextNode(char));
+    }
+    i++;
+  }, 15);
+}
+
+// ─── LÓGICA DE CAMBIO DE TEMA (CLARO / OSCURO) ───────────────────────────
+const themeBtn = document.getElementById('theme-btn');
+
+themeBtn.addEventListener('click', () => {
+  // Alterna la clase dark-theme en el body
+  document.body.classList.toggle('dark-theme');
+  
+  // Cambia el emoji dependiendo del tema activo
+  if (document.body.classList.contains('dark-theme')) {
+    themeBtn.textContent = '☀️'; // Sol para volver al tema claro
+  } else {
+    themeBtn.textContent = '🌙'; // Luna para volver al tema oscuro
+  }
+});
+
+function createParticles(){
+
+  const container =
+    document.getElementById("particles");
+
+  const total = 45;
+
+  for(let i=0;i<total;i++){
+
+    const p =
+      document.createElement("div");
+
+    p.className = "particle";
+
+    const size =
+      2 + Math.random()*5;
+
+    p.style.width = size+"px";
+    p.style.height = size+"px";
+
+    p.style.left =
+      Math.random()*100+"vw";
+
+    p.style.top =
+      Math.random()*100+"vh";
+
+    p.style.setProperty(
+      "--dur",
+      (12 + Math.random()*15)+"s"
+    );
+
+    p.style.setProperty(
+      "--fade",
+      (4 + Math.random()*6)+"s"
+    );
+
+    p.style.animationDelay =
+      Math.random()*10+"s";
+
+    container.appendChild(p);
+  }
+}
+
+createParticles();
+
+</script>
+</body>
+</html>
